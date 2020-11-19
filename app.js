@@ -25,12 +25,12 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 mongoose.connect(process.env.DBNAME, {useNewUrlParser:true, useUnifiedTopology: true, useCreateIndex: true});
-// mongoose.set('useCreateIndex', true);
 
 const userSchema = new mongoose.Schema({
   email: String, // this needs to modified to username to match the passport configuration
   password: String,
-  googleId: String
+  googleId: String,
+  secret: String
 });
 
 userSchema.plugin(passportLocalMongoose);
@@ -65,28 +65,37 @@ passport.use(new GoogleStrategy({
 ));
 
 app.get("/", function(req, res){
-  res.render('home');
+  res.render("home");
 });
 
 app.get("/login", function(req, res){
-  res.render('login');
+  res.render("login");
 });
 
 app.get("/register", function(req, res){
-  res.render('register');
+  res.render("register");
 });
 
 app.get("/secrets", function(req, res){
-  if(req.isAuthenticated()){
-    res.render('secrets');
+User.find({secret:{$ne: null}}, function(err, users){
+  if(err){
+    console.log(err);
   }else{
-    res.redirect("/login");
+    res.render("secrets", {users: users});
   }
+})
+
+  // if(req.isAuthenticated()){ // authentication check is no loger required
+  //   res.render("secrets");
+  // }else{
+  //   res.redirect("/login");
+  // }
+
 });
 
 app.get("/submit", function(req, res){
   if(req.isAuthenticated()){
-    res.render('submit');
+    res.render("submit");
   }else{
     res.redirect("/login");
   }
@@ -134,6 +143,15 @@ app.post("/login", function(req, res) {
       });
     }
   })
+});
+
+app.post("/submit", function(req, res) {
+  // console.log(req.user); // has the user info pertaining to the session
+  User.findById(req.user.id, function(err, user) {
+    user.secret = req.body.secret;
+    user.save();
+    res.redirect("/secrets");
+  });
 });
 
 app.listen(3000, function(){
